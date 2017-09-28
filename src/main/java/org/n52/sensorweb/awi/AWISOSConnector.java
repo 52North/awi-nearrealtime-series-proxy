@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.n52.janmayen.function.Functions;
 import org.n52.proxy.config.DataSourceConfiguration;
 import org.n52.proxy.connector.AbstractSosConnector;
-import org.n52.proxy.connector.constellations.DatasetConstellation;
+import org.n52.proxy.connector.ConnectorRequestFailedException;
 import org.n52.proxy.connector.constellations.QuantityDatasetConstellation;
 import org.n52.proxy.connector.utils.DataEntityBuilder;
 import org.n52.proxy.connector.utils.EntityBuilder;
@@ -109,14 +109,6 @@ public class AWISOSConnector extends AbstractSosConnector {
                 .findFirst();
     }
 
-    private Optional<TimePeriod> getTimeRange(QuantityDatasetConstellation dataset, String serviceURL) {
-        return Optional.ofNullable(getDataAvailability(dataset, serviceURL))
-                .map(GetDataAvailabilityResponse::getDataAvailabilities)
-                .map(List::stream).orElseGet(Stream::empty)
-                .map(DataAvailability::getPhenomenonTime)
-                .findFirst();
-    }
-
     @Override
     public Optional<DataEntity<?>> getFirstObservation(DatasetEntity<?> dataset) {
         return getFirst(dataset).map(getDataCreator(dataset));
@@ -138,29 +130,33 @@ public class AWISOSConnector extends AbstractSosConnector {
     private void addObservationOffering(ServiceConstellation service,
                                         SosObservationOffering observationOffering) {
         observationOffering.getProcedures().forEach(procedureId -> {
-            getDataAvailabilityByProcedure(procedureId, service.getService().getUrl()).getDataAvailabilities()
-                    .forEach(da -> {
-                        createFeatureEntity(service, da);
-                        createProcedureEntity(service, da, !observationOffering.getObservedArea().is1D());
-                        createPhenomenonEntity(service, da);
-                        createCategoryEntity(service, da);
-                        createOfferingEntity(service, da);
-                        QuantityDatasetConstellation dataset = createDatasetConstellation(da);
-                        service.add(dataset);
-                        getFirstLatest(service, dataset).ifPresent(minmax -> {
-                            dataset.setFirst(minmax.getMinimum());
-                            dataset.setLatest(minmax.getMaximum());
+            try {
+                getDataAvailabilityByProcedure(procedureId, service.getService().getUrl()).getDataAvailabilities()
+                        .forEach(da -> {
+                            createFeatureEntity(service, da);
+                            createProcedureEntity(service, da, !observationOffering.getObservedArea().is1D());
+                            createPhenomenonEntity(service, da);
+                            createCategoryEntity(service, da);
+                            createOfferingEntity(service, da);
+                            QuantityDatasetConstellation dataset = createDatasetConstellation(da);
+                            service.add(dataset);
+                            try {
+                                getFirstLatest(da, service).ifPresent(minmax -> {
+                                    dataset.setFirst(minmax.getMinimum());
+                                    dataset.setLatest(minmax.getMaximum());
+                                });
+                            } catch (ConnectorRequestFailedException ex) {
+                                LOG.error("Failed to add dataset", ex);
+                            }
                         });
-                    });
+            } catch (ConnectorRequestFailedException ex) {
+                LOG.error("Failed to add dataset", ex);
+            }
         });
     }
 
-    public Optional<MinMax<? extends DataEntity<?>>> getFirstLatest(ServiceConstellation service,
-                                                                    QuantityDatasetConstellation dataset) {
-        return getTimeRange(dataset, service.getService().getUrl())
-                .map(range -> Stream.of(range.getStart(), range.getEnd())
-                .map(this::createTimeFilter).collect(toList()))
-                .map(filters -> getObservation(dataset, filters, service.getService().getUrl()))
+    private Optional<MinMax<? extends DataEntity<?>>> getFirstLatest(DataAvailability da, ServiceConstellation service) {
+        return Optional.ofNullable(getFirstLatest(da, service.getService().getUrl()))
                 .map(GetObservationResponse::getObservationCollection)
                 .map(ObservationStream::toStream)
                 .map(stream -> stream.map(DataEntityBuilder::createQuantityDataEntity)
@@ -170,26 +166,27 @@ public class AWISOSConnector extends AbstractSosConnector {
                 .map(this::asMinMax);
     }
 
+    private GetObservationResponse getFirstLatest(DataAvailability da, String serviceURL) {
+        GetObservationRequest request = new GetObservationRequest(SosConstants.SOS, Sos2Constants.SERVICEVERSION);
+        request.addProcedure(da.getProcedure().getHref());
+        request.addOffering(da.getOffering().getHref());
+        request.addObservedProperty(da.getObservedProperty().getHref());
+        request.addFeatureIdentifier(da.getFeatureOfInterest().getHref());
+        List<TemporalFilter> temporalFilters = Stream.of(da.getPhenomenonTime().getStart(),
+                                                         da.getPhenomenonTime().getEnd())
+                .map(this::createTimeFilter).collect(toList());
+        request.setTemporalFilters(temporalFilters);
+        return (GetObservationResponse) getSosResponseFor(request, Sos2Constants.NS_SOS_20, serviceURL);
+    }
+
     private <T> MinMax<T> asMinMax(List<T> list) {
         if (list.size() < 1 || list.size() > 2) {
-            throw new IllegalArgumentException();
+            return null;
         }
         Iterator<T> iterator = list.iterator();
         T minimum = iterator.next();
         T maximum = iterator.hasNext() ? iterator.next() : minimum;
         return new MinMax<>(minimum, maximum);
-    }
-
-    protected GetObservationResponse getObservation(DatasetConstellation<?> seriesEntity,
-                                                    List<TemporalFilter> temporalFilter,
-                                                    String serviceURL) {
-        GetObservationRequest request = new GetObservationRequest(SosConstants.SOS, Sos2Constants.SERVICEVERSION);
-        request.addProcedure(seriesEntity.getProcedure());
-        request.addOffering(seriesEntity.getOffering());
-        request.addObservedProperty(seriesEntity.getPhenomenon());
-        request.addFeatureIdentifier(seriesEntity.getFeature());
-        Optional.ofNullable(temporalFilter).ifPresent(request::setTemporalFilters);
-        return (GetObservationResponse) getSosResponseFor(request, Sos2Constants.NS_SOS_20, serviceURL);
     }
 
     private Optional<OmObservation> getFirstLatest(DatasetEntity<?> dataset, Optional<DateTime> time) {
@@ -231,11 +228,11 @@ public class AWISOSConnector extends AbstractSosConnector {
         return service;
     }
 
-    protected Function<OmObservation, DataEntity<?>> getDataCreator(DatasetEntity<?> dataset) {
+    private Function<OmObservation, DataEntity<?>> getDataCreator(DatasetEntity<?> dataset) {
         return observation -> createDataEntity(observation, dataset);
     }
 
-    protected PhenomenonEntity createPhenomenonEntity(ServiceConstellation service, DataAvailability da) {
+    private PhenomenonEntity createPhenomenonEntity(ServiceConstellation service, DataAvailability da) {
         return service.getPhenomena().computeIfAbsent(
                 da.getObservedProperty().getHref(),
                 phenomenonId -> {
@@ -246,7 +243,7 @@ public class AWISOSConnector extends AbstractSosConnector {
                 });
     }
 
-    protected CategoryEntity createCategoryEntity(ServiceConstellation service, DataAvailability da) {
+    private CategoryEntity createCategoryEntity(ServiceConstellation service, DataAvailability da) {
         return service.getCategories().computeIfAbsent(
                 da.getObservedProperty().getHref(),
                 categoryId -> {
@@ -257,7 +254,7 @@ public class AWISOSConnector extends AbstractSosConnector {
                 });
     }
 
-    protected OfferingEntity createOfferingEntity(ServiceConstellation service, DataAvailability da) {
+    private OfferingEntity createOfferingEntity(ServiceConstellation service, DataAvailability da) {
         return service.getOfferings().computeIfAbsent(
                 da.getOffering().getHref(),
                 offeringId -> {
@@ -272,7 +269,7 @@ public class AWISOSConnector extends AbstractSosConnector {
                 });
     }
 
-    protected ProcedureEntity createProcedureEntity(ServiceConstellation service, DataAvailability da, boolean mobile) {
+    private ProcedureEntity createProcedureEntity(ServiceConstellation service, DataAvailability da, boolean mobile) {
         return service.getProcedures().computeIfAbsent(
                 da.getProcedure().getHref(),
                 procedureId -> {
@@ -286,7 +283,7 @@ public class AWISOSConnector extends AbstractSosConnector {
 
     }
 
-    protected FeatureEntity createFeatureEntity(ServiceConstellation service, DataAvailability da) {
+    private FeatureEntity createFeatureEntity(ServiceConstellation service, DataAvailability da) {
         return service.getFeatures().computeIfAbsent(
                 da.getFeatureOfInterest().getHref(),
                 featureId -> {
@@ -305,7 +302,7 @@ public class AWISOSConnector extends AbstractSosConnector {
 
     }
 
-    protected QuantityDatasetConstellation createDatasetConstellation(DataAvailability da) {
+    private QuantityDatasetConstellation createDatasetConstellation(DataAvailability da) {
         return new QuantityDatasetConstellation(
                 da.getProcedure().getHref(),
                 da.getOffering().getHref(),
