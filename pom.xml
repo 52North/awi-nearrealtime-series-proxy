@@ -83,8 +83,8 @@
             <version>${version.seriesproxy}</version>
         </dependency>
         <dependency>
-            <groupId>org.n52.series-api</groupId>
-            <artifactId>series-dao</artifactId>
+            <groupId>org.n52.series-api.db</groupId>
+            <artifactId>dao</artifactId>
             <version>${version.seriesapi}</version>
         </dependency>
         <dependency>
