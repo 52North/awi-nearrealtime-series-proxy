@@ -1,0 +1,51 @@
+{
+    "dataSources": [
+        {
+            "itemName": "oceanotron",
+            "url": "http://oceanotrondemo.ifremer.fr/oceanotron/SOS/default",
+            "version": "2.0.0",
+            "type": "SOS",
+            "job": {
+                "cronExpression": "0 0 0/1 * * ?",
+                "enabled": true,
+                "triggerAtStartup": true
+            }
+        },
+        {
+            "itemName": "sensorwebtestbed",
+            "url": "http://sensorweb.demo.52north.org/sensorwebtestbed/service",
+            "version": "2.0.0",
+            "type": "SOS",
+            "job": {
+                "cronExpression": "0 0 0/1 * * ?",
+                "enabled": true,
+                "triggerAtStartup": true
+            }
+        },
+        {
+            "itemName": "awi",
+            "url": "https://sos.awi.de/SOS/service",
+            "version": "2.0.0",
+            "type": "SOS",
+            "connector": "org.n52.proxy.connector.AWISOSConnector",
+            "job": {
+                "cronExpression": "0 0 0/1 * * ?",
+                "enabled": true,
+                "triggerAtStartup": true
+            }
+        },
+        {
+            "itemName": "hzg",
+            "url": "http://codm.hzg.de/52n-sos-webapp/service",
+            "version": "2.0.0",
+            "connector": "TrajectorySOSConnector",
+            "type": "SOS",
+            "job": {
+                "cronExpression": "0 0 0/1 * * ?",
+                "enabled": true,
+                "triggerAtStartup": true
+            }
+        }
+
+    ]
+}

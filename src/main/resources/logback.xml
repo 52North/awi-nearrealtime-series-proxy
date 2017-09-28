@@ -1,0 +1,36 @@
+<configuration scan="true" scanPeriod="30 seconds">
+
+    <property name="path" value="${catalina.base}/logs/series-proxy" />
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{0} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${path}.log</file>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${path}/%d{yyyy-MM-dd}-%i.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>10MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%date %-5level [%thread] [%file:%line] %msg%n</pattern>
+        </encoder>
+    </appender>
+    <logger name="org.n52" level="DEBUG" />
+
+    <logger name="org.geotools" level="WARN" />
+    <logger name="org.apache" level="WARN" />
+    <logger name="com.sun.xml" level="ERROR" />
+    <logger name="org.geotools" level="WARN" />
+    <logger name="org.jboss.logging" level="WARN" />
+    <root level="INFO">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="FILE" />
+    </root>
+</configuration>
