@@ -188,6 +188,12 @@
                         <port>${jetty.port.http}</port>
                     </httpConnector>
                     <stopPort>${jetty.port.stop}</stopPort>
+                    <systemProperties>
+                        <systemProperty>
+                            <name>catalina.base</name>
+                            <value>${project.build.directory}</value>
+                        </systemProperty>
+                    </systemProperties>
                     <webApp>
                         <contextPath>/</contextPath>
                     </webApp>
