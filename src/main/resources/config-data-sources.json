@@ -3,7 +3,7 @@
        
         {
             "itemName": "awi",
-            "url": "http://localhost:3000/service",
+            "url": "https://sos.awi.de/SOS/service",
             "version": "2.0.0",
             "type": "SOS",
             "connector": "org.n52.sensorweb.awi.AWISOSConnector",
