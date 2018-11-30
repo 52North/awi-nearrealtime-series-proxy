@@ -32,6 +32,7 @@ import org.n52.series.db.beans.PhenomenonEntity;
 import org.n52.series.db.beans.ProcedureEntity;
 import org.n52.series.db.beans.UnitEntity;
 import org.n52.series.db.dao.DbQuery;
+import org.n52.series.db.dao.JTSGeometryConverter;
 import org.n52.shetland.ogc.filter.TemporalFilter;
 import org.n52.shetland.ogc.gml.CodeType;
 import org.n52.shetland.ogc.gml.time.TimePeriod;
@@ -83,7 +84,7 @@ public class AWISOSConnector extends AbstractSosConnector {
     }
 
     @Override
-    public List<DataEntity<?>> getObservations(DatasetEntity<?> dataset, DbQuery query) {
+    public List<DataEntity<?>> getObservations(DatasetEntity dataset, DbQuery query) {
         return getObservation(dataset, createTimeFilter(query), createSpatialFilter(query))
                 .getObservationCollection().toStream()
                 .map(getDataCreator(dataset))
@@ -91,7 +92,7 @@ public class AWISOSConnector extends AbstractSosConnector {
     }
 
     @Override
-    public UnitEntity getUom(DatasetEntity<?> dataset) {
+    public UnitEntity getUom(DatasetEntity dataset) {
         return getLatest(dataset)
                 .map(OmObservation::getValue)
                 .map(ObservationValue::getValue)
@@ -101,7 +102,7 @@ public class AWISOSConnector extends AbstractSosConnector {
                 .orElseGet(() -> EntityBuilder.createUnit("", "", (ProxyServiceEntity) dataset.getService()));
     }
 
-    private Optional<TimePeriod> getTimeRange(DatasetEntity<?> dataset) {
+    private Optional<TimePeriod> getTimeRange(DatasetEntity dataset) {
         return Optional.ofNullable(getDataAvailability(dataset))
                 .map(GetDataAvailabilityResponse::getDataAvailabilities)
                 .map(List::stream).orElseGet(Stream::empty)
@@ -110,20 +111,20 @@ public class AWISOSConnector extends AbstractSosConnector {
     }
 
     @Override
-    public Optional<DataEntity<?>> getFirstObservation(DatasetEntity<?> dataset) {
+    public Optional<DataEntity<?>> getFirstObservation(DatasetEntity dataset) {
         return getFirst(dataset).map(getDataCreator(dataset));
     }
 
-    private Optional<OmObservation> getFirst(DatasetEntity<?> dataset) {
+    private Optional<OmObservation> getFirst(DatasetEntity dataset) {
         return getFirstLatest(dataset, getTimeRange(dataset).map(TimePeriod::getStart));
     }
 
     @Override
-    public Optional<DataEntity<?>> getLastObservation(DatasetEntity<?> dataset) {
+    public Optional<DataEntity<?>> getLastObservation(DatasetEntity dataset) {
         return getLatest(dataset).map(getDataCreator(dataset));
     }
 
-    private Optional<OmObservation> getLatest(DatasetEntity<?> dataset) {
+    private Optional<OmObservation> getLatest(DatasetEntity dataset) {
         return getFirstLatest(dataset, getTimeRange(dataset).map(TimePeriod::getEnd));
     }
 
@@ -189,7 +190,7 @@ public class AWISOSConnector extends AbstractSosConnector {
         return new MinMax<>(minimum, maximum);
     }
 
-    private Optional<OmObservation> getFirstLatest(DatasetEntity<?> dataset, Optional<DateTime> time) {
+    private Optional<OmObservation> getFirstLatest(DatasetEntity dataset, Optional<DateTime> time) {
         return time.map(this::createTimeFilter)
                 .map(filter -> getObservation(dataset, filter))
                 .map(GetObservationResponse::getObservationCollection)
@@ -228,7 +229,7 @@ public class AWISOSConnector extends AbstractSosConnector {
         return service;
     }
 
-    private Function<OmObservation, DataEntity<?>> getDataCreator(DatasetEntity<?> dataset) {
+    private Function<OmObservation, DataEntity<?>> getDataCreator(DatasetEntity dataset) {
         return observation -> createDataEntity(observation, dataset);
     }
 
@@ -290,7 +291,7 @@ public class AWISOSConnector extends AbstractSosConnector {
                     SamplingFeature f = (SamplingFeature) getFeatureOfInterestById(
                             featureId, service.getService().getUrl()).getAbstractFeature();
                     FeatureEntity feature = new FeatureEntity();
-                    feature.setGeometry(f.getGeometry());
+                    feature.setGeometry(JTSGeometryConverter.convert(f.getGeometry()));
                     feature.setDomainId(f.getIdentifier());
                     feature.setName(Optional.ofNullable(f.getFirstName())
                             .map(CodeType::getValue)
