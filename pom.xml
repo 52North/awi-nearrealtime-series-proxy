@@ -4,7 +4,7 @@
     <parent>
         <groupId>org.n52</groupId>
         <artifactId>parent</artifactId>
-        <version>7</version>
+        <version>14</version>
     </parent>
     <groupId>org.n52.awi</groupId>
     <artifactId>nrt-series-api</artifactId>
@@ -23,6 +23,9 @@
             <snapshots>
                 <enabled>true</enabled>
             </snapshots>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
         </repository>
         <repository>
             <id>52n-snapshots</id>
@@ -61,11 +64,11 @@
     
     <properties>
         <version.java>1.8</version.java>
-        <version.janmayen>1.2.0-SNAPSHOT</version.janmayen>
-        <version.shetland>1-SNAPSHOT</version.shetland>
+        <version.arctic-sea>5.1.0</version.arctic-sea>
         <version.slf4j>1.7.25</version.slf4j>
-        <version.jodatime>2.9.9</version.jodatime>
-        <version.seriesapi>2.0.0-SNAPSHOT</version.seriesapi>
+        <version.jodatime>2.10.1</version.jodatime>
+        <version.seriesapi>2.0.1-SNAPSHOT</version.seriesapi>
+        <version.seriesapi.db>2.0.0-SNAPSHOT</version.seriesapi.db>
         <version.seriesproxy>1.0.0-SNAPSHOT</version.seriesproxy>
     </properties>
     
@@ -85,7 +88,7 @@
         <dependency>
             <groupId>org.n52.series-api.db</groupId>
             <artifactId>dao</artifactId>
-            <version>${version.seriesapi}</version>
+            <version>${version.seriesapi.db}</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -93,14 +96,14 @@
             <version>${version.slf4j}</version>
         </dependency>
         <dependency>
-            <groupId>org.n52.janmayen</groupId>
+            <groupId>org.n52.arctic-sea</groupId>
             <artifactId>janmayen</artifactId>
-            <version>${version.janmayen}</version>
+            <version>${version.arctic-sea}</version>
         </dependency>
         <dependency>
-            <groupId>org.n52.shetland</groupId>
+            <groupId>org.n52.arctic-sea</groupId>
             <artifactId>shetland</artifactId>
-            <version>${version.shetland}</version>
+            <version>${version.arctic-sea}</version>
         </dependency>
         <dependency>
             <groupId>joda-time</groupId>
