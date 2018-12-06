@@ -8,7 +8,7 @@
     </parent>
     <groupId>org.n52.awi</groupId>
     <artifactId>nrt-series-api</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1-SNAPSHOT</version>
     <packaging>war</packaging>
 
     
@@ -67,9 +67,9 @@
         <version.arctic-sea>5.1.0</version.arctic-sea>
         <version.slf4j>1.7.25</version.slf4j>
         <version.jodatime>2.10.1</version.jodatime>
-        <version.seriesapi>2.0.1-SNAPSHOT</version.seriesapi>
-        <version.seriesapi.db>2.0.0-SNAPSHOT</version.seriesapi.db>
-        <version.seriesproxy>1.0.0-SNAPSHOT</version.seriesproxy>
+        <version.seriesapi>2.0.1-alpha.1</version.seriesapi>
+        <version.seriesapi.db>2.0.0-alpha.4</version.seriesapi.db>
+        <version.seriesproxy>1.0.0-alpha.1</version.seriesproxy>
     </properties>
     
     <dependencies>
@@ -114,6 +114,7 @@
     </dependencies>
     
     <build>
+        <finalName>de.awi.sos.api</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
