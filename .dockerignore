@@ -1,14 +1,4 @@
-src/
 .git/
-*.xml
+nb*.xml
 *.md
-target/*.war
-target/*.jar
-target/classes/
-target/test-classes/
-target/generated-sources/
-target/apidocs/
-target/maven-*/
-target/javadoc-d/
-target/war/
-target/tmp/
+target/
