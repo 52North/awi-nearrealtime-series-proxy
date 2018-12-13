@@ -63,15 +63,15 @@
     </developers>
 
     <scm>
-        <url>https://github.com/52North/awi-nearrealtime-series-api</url>
-        <connection>scm:git:https://github.com/52North/awi-nearrealtime-series-api.git</connection>
-        <developerConnection>scm:git:https://github.com/52North/awi-nearrealtime-series-api.git</developerConnection>
-        <tag>HEAD</tag>
+        <url>https://github.com/52North/awi-nearrealtime-series-proxy</url>
+        <connection>scm:git:https://github.com/52North/awi-nearrealtime-series-proxy.git</connection>
+        <developerConnection>scm:git:https://github.com/52North/awi-nearrealtime-series-proxy.git</developerConnection>
+        <tag>v1.0.0</tag>
     </scm>
 
     <issueManagement>
         <system>GitHub issues</system>
-        <url>https://github.com/52North/awi-nearrealtime-series-api/issues?state=open</url>
+        <url>https://github.com/52North/awi-nearrealtime-series-proxy/issues?state=open</url>
     </issueManagement>
 
     <licenses>
