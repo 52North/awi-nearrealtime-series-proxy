@@ -53,13 +53,14 @@ import org.n52.shetland.ogc.sos.response.GetObservationResponse;
 import org.n52.shetland.util.MinMax;
 
 /**
- * TODO JavaDoc
+ * {@link AbstractSosConnector} for the AWI NearRealTime SOS.
  *
  * @author Christian Autermann
  */
 public class AWISOSConnector extends AbstractSosConnector {
     private static final String SERVICE_DESCRIPTION = "AWI NearRealTime SOS";
     private static final Logger LOG = LoggerFactory.getLogger(AWISOSConnector.class);
+    private static final String ERROR_MESSAGE_CONNECTOR_REQUEST_FAILED = "Failed to add dataset";
 
     @Override
     protected boolean canHandle(DataSourceConfiguration config, GetCapabilitiesResponse capabilities) {
@@ -130,33 +131,12 @@ public class AWISOSConnector extends AbstractSosConnector {
 
     private void addObservationOffering(ServiceConstellation service,
                                         SosObservationOffering observationOffering) {
-        observationOffering.getProcedures().forEach(procedureId -> {
-            try {
-                getDataAvailabilityByProcedure(procedureId, service.getService().getUrl()).getDataAvailabilities()
-                        .forEach(da -> {
-                            createFeatureEntity(service, da);
-                            createProcedureEntity(service, da, !observationOffering.getObservedArea().is1D());
-                            createPhenomenonEntity(service, da);
-                            createCategoryEntity(service, da);
-                            createOfferingEntity(service, da);
-                            QuantityDatasetConstellation dataset = createDatasetConstellation(da);
-                            service.add(dataset);
-                            try {
-                                getFirstLatest(da, service).ifPresent(minmax -> {
-                                    dataset.setFirst(minmax.getMinimum());
-                                    dataset.setLatest(minmax.getMaximum());
-                                });
-                            } catch (ConnectorRequestFailedException ex) {
-                                LOG.error("Failed to add dataset", ex);
-                            }
-                        });
-            } catch (ConnectorRequestFailedException ex) {
-                LOG.error("Failed to add dataset", ex);
-            }
-        });
+        observationOffering.getProcedures()
+                .forEach(procedureId -> addDatasetToService(procedureId, service, observationOffering));
     }
 
-    private Optional<MinMax<? extends DataEntity<?>>> getFirstLatest(DataAvailability da, ServiceConstellation service) {
+    private Optional<MinMax<? extends DataEntity<?>>> getFirstLatest(DataAvailability da,
+                                                                     ServiceConstellation service) {
         return Optional.ofNullable(getFirstLatest(da, service.getService().getUrl()))
                 .map(GetObservationResponse::getObservationCollection)
                 .map(ObservationStream::toStream)
@@ -180,6 +160,14 @@ public class AWISOSConnector extends AbstractSosConnector {
         return (GetObservationResponse) getSosResponseFor(request, Sos2Constants.NS_SOS_20, serviceURL);
     }
 
+    private Optional<OmObservation> getFirstLatest(DatasetEntity dataset, Optional<DateTime> time) {
+        return time.map(this::createTimeFilter)
+                .map(filter -> getObservation(dataset, filter))
+                .map(GetObservationResponse::getObservationCollection)
+                .map(ObservationStream::toStream)
+                .flatMap(Stream::findFirst);
+    }
+
     private <T> MinMax<T> asMinMax(List<T> list) {
         if (list.size() < 1 || list.size() > 2) {
             return null;
@@ -188,14 +176,6 @@ public class AWISOSConnector extends AbstractSosConnector {
         T minimum = iterator.next();
         T maximum = iterator.hasNext() ? iterator.next() : minimum;
         return new MinMax<>(minimum, maximum);
-    }
-
-    private Optional<OmObservation> getFirstLatest(DatasetEntity dataset, Optional<DateTime> time) {
-        return time.map(this::createTimeFilter)
-                .map(filter -> getObservation(dataset, filter))
-                .map(GetObservationResponse::getObservationCollection)
-                .map(ObservationStream::toStream)
-                .flatMap(Stream::findFirst);
     }
 
     private boolean checkOffering(SosObservationOffering offering) {
@@ -234,73 +214,68 @@ public class AWISOSConnector extends AbstractSosConnector {
     }
 
     private PhenomenonEntity createPhenomenonEntity(ServiceConstellation service, DataAvailability da) {
-        return service.getPhenomena().computeIfAbsent(
-                da.getObservedProperty().getHref(),
-                phenomenonId -> {
-                    PhenomenonEntity phenomenon = new PhenomenonEntity();
-                    phenomenon.setName(da.getObservedProperty().getTitleOrFromHref());
-                    phenomenon.setDomainId(phenomenonId);
-                    return phenomenon;
-                });
+        return service.getPhenomena().computeIfAbsent(da.getObservedProperty().getHref(),
+                                                      phenomenonId -> createPhenomenon(da, phenomenonId));
     }
 
     private CategoryEntity createCategoryEntity(ServiceConstellation service, DataAvailability da) {
-        return service.getCategories().computeIfAbsent(
-                da.getObservedProperty().getHref(),
-                categoryId -> {
-                    CategoryEntity category = new CategoryEntity();
-                    category.setName(da.getObservedProperty().getTitleOrFromHref());
-                    category.setDomainId(categoryId);
-                    return category;
-                });
+        return service.getCategories().computeIfAbsent(da.getObservedProperty().getHref(),
+                                                       categoryId -> createCategoryEntity(da, categoryId));
+    }
+
+    private CategoryEntity createCategoryEntity(DataAvailability da, String categoryId) {
+        CategoryEntity category = new CategoryEntity();
+        category.setName(da.getObservedProperty().getTitleOrFromHref());
+        category.setDomainId(categoryId);
+        return category;
     }
 
     private OfferingEntity createOfferingEntity(ServiceConstellation service, DataAvailability da) {
-        return service.getOfferings().computeIfAbsent(
-                da.getOffering().getHref(),
-                offeringId -> {
-                    OfferingEntity offering = new OfferingEntity();
-                    offering.setName(da.getOffering().getTitleOrFromHref());
-                    offering.setDomainId(offeringId);
-                    offering.setPhenomenonTimeStart(da.getPhenomenonTime().getStart().toDate());
-                    offering.setPhenomenonTimeEnd(da.getPhenomenonTime().getEnd().toDate());
-                    offering.setResultTimeStart(da.getPhenomenonTime().getStart().toDate());
-                    offering.setResultTimeStart(da.getPhenomenonTime().getEnd().toDate());
-                    return offering;
-                });
+        return service.getOfferings().computeIfAbsent(da.getOffering().getHref(),
+                                                      offeringId -> createOfferingEntity(da, offeringId));
+    }
+
+    private OfferingEntity createOfferingEntity(DataAvailability da, String offeringId) {
+        OfferingEntity offering = new OfferingEntity();
+        offering.setName(da.getOffering().getTitleOrFromHref());
+        offering.setDomainId(offeringId);
+        offering.setPhenomenonTimeStart(da.getPhenomenonTime().getStart().toDate());
+        offering.setPhenomenonTimeEnd(da.getPhenomenonTime().getEnd().toDate());
+        offering.setResultTimeStart(da.getPhenomenonTime().getStart().toDate());
+        offering.setResultTimeStart(da.getPhenomenonTime().getEnd().toDate());
+        return offering;
     }
 
     private ProcedureEntity createProcedureEntity(ServiceConstellation service, DataAvailability da, boolean mobile) {
-        return service.getProcedures().computeIfAbsent(
-                da.getProcedure().getHref(),
-                procedureId -> {
-                    ProcedureEntity procedure = new ProcedureEntity();
-                    procedure.setMobile(mobile);
-                    procedure.setInsitu(true);
-                    procedure.setName(da.getProcedure().getTitleOrFromHref());
-                    procedure.setDomainId(procedureId);
-                    return procedure;
-                });
+        return service.getProcedures().computeIfAbsent(da.getProcedure().getHref(),
+                                                       procedureId -> createProcedureEntity(da, procedureId, mobile));
 
     }
 
+    private ProcedureEntity createProcedureEntity(DataAvailability da, String procedureId, boolean mobile) {
+        ProcedureEntity procedure = new ProcedureEntity();
+        procedure.setMobile(mobile);
+        procedure.setInsitu(true);
+        procedure.setName(da.getProcedure().getTitleOrFromHref());
+        procedure.setDomainId(procedureId);
+        return procedure;
+    }
+
     private FeatureEntity createFeatureEntity(ServiceConstellation service, DataAvailability da) {
-        return service.getFeatures().computeIfAbsent(
-                da.getFeatureOfInterest().getHref(),
-                featureId -> {
-                    SamplingFeature f = (SamplingFeature) getFeatureOfInterestById(
-                            featureId, service.getService().getUrl()).getAbstractFeature();
-                    FeatureEntity feature = new FeatureEntity();
-                    feature.setGeometry(JTSGeometryConverter.convert(f.getGeometry()));
-                    feature.setDomainId(f.getIdentifier());
-                    feature.setName(Optional.ofNullable(f.getFirstName())
-                            .map(CodeType::getValue)
-                            .orElseGet(feature::getDomainId));
-                    feature.setDescription(f.getDescription());
-                    return feature;
+        return service.getFeatures().computeIfAbsent(da.getFeatureOfInterest().getHref(),
+                                                     featureId -> createFeatureEntity(featureId, service));
 
-                });
+    }
 
+    private FeatureEntity createFeatureEntity(String featureId, ServiceConstellation service) {
+        SamplingFeature f = (SamplingFeature) getFeatureOfInterestById(featureId, service.getService().getUrl())
+                .getAbstractFeature();
+        FeatureEntity feature = new FeatureEntity();
+        feature.setGeometry(JTSGeometryConverter.convert(f.getGeometry()));
+        feature.setDomainId(f.getIdentifier());
+        feature.setName(Optional.ofNullable(f.getFirstName()).map(CodeType::getValue).orElseGet(feature::getDomainId));
+        feature.setDescription(f.getDescription());
+        return feature;
     }
 
     private QuantityDatasetConstellation createDatasetConstellation(DataAvailability da) {
@@ -310,6 +285,44 @@ public class AWISOSConnector extends AbstractSosConnector {
                 da.getObservedProperty().getHref(),
                 da.getObservedProperty().getHref(),
                 da.getFeatureOfInterest().getHref());
+    }
+
+    private PhenomenonEntity createPhenomenon(DataAvailability da, String phenomenonId) {
+        PhenomenonEntity phenomenon = new PhenomenonEntity();
+        phenomenon.setName(da.getObservedProperty().getTitleOrFromHref());
+        phenomenon.setDomainId(phenomenonId);
+        return phenomenon;
+    }
+
+    private void addDatasetToService(String procedureId, ServiceConstellation service,
+                                     SosObservationOffering observationOffering) {
+        try {
+            GetDataAvailabilityResponse dataAvailabilityByProcedure
+                    = getDataAvailabilityByProcedure(procedureId, service.getService().getUrl());
+            dataAvailabilityByProcedure.getDataAvailabilities()
+                    .forEach(da -> addDatasetToService(service, da, observationOffering));
+        } catch (ConnectorRequestFailedException ex) {
+            LOG.error(ERROR_MESSAGE_CONNECTOR_REQUEST_FAILED, ex);
+        }
+    }
+
+    private void addDatasetToService(ServiceConstellation service, DataAvailability da,
+                                     SosObservationOffering observationOffering) {
+        createFeatureEntity(service, da);
+        createProcedureEntity(service, da, !observationOffering.getObservedArea().is1D());
+        createPhenomenonEntity(service, da);
+        createCategoryEntity(service, da);
+        createOfferingEntity(service, da);
+        QuantityDatasetConstellation dataset = createDatasetConstellation(da);
+        service.add(dataset);
+        try {
+            getFirstLatest(da, service).ifPresent(minmax -> {
+                dataset.setFirst(minmax.getMinimum());
+                dataset.setLatest(minmax.getMaximum());
+            });
+        } catch (ConnectorRequestFailedException ex) {
+            LOG.error(ERROR_MESSAGE_CONNECTOR_REQUEST_FAILED, ex);
+        }
     }
 
 }
