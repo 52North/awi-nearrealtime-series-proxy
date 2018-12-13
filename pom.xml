@@ -68,8 +68,8 @@
         <version.slf4j>1.7.25</version.slf4j>
         <version.jodatime>2.10.1</version.jodatime>
         <version.seriesapi>2.0.1-alpha.1</version.seriesapi>
-        <version.seriesapi.db>2.0.0-alpha.4</version.seriesapi.db>
-        <version.seriesproxy>1.0.0-alpha.1</version.seriesproxy>
+        <version.seriesapi.db>2.0.0-alpha.5</version.seriesapi.db>
+        <version.seriesproxy>1.0.0-alpha.2</version.seriesproxy>
     </properties>
     
     <dependencies>
