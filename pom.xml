@@ -12,8 +12,8 @@
     <packaging>war</packaging>
 
     
-    <name>52&deg;North AWI NRT Series API</name>
-    <description>52&deg;North AWI Series API</description>
+    <name>52°North AWI NRT Series API</name>
+    <description>52°North AWI Series API</description>
     <inceptionYear>2017</inceptionYear>
 
     <repositories>
