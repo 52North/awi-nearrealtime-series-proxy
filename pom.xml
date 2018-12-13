@@ -57,7 +57,7 @@
             <id>autermann</id>
             <name>Christian Autermann</name>
             <email>c.autermann@52north.org</email>
-            <organization>52&deg;North GmbH</organization>
+            <organization>52°North GmbH</organization>
             <organizationUrl>https://52north.org</organizationUrl>
         </developer>
     </developers>
