@@ -61,6 +61,28 @@
             <organizationUrl>https://52north.org</organizationUrl>
         </developer>
     </developers>
+
+    <scm>
+        <url>https://github.com/52North/awi-nearrealtime-series-api</url>
+        <connection>scm:git:https://github.com/52North/awi-nearrealtime-series-api.git</connection>
+        <developerConnection>scm:git:https://github.com/52North/awi-nearrealtime-series-api.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
+
+    <issueManagement>
+        <system>GitHub issues</system>
+        <url>https://github.com/52North/awi-nearrealtime-series-api/issues?state=open</url>
+    </issueManagement>
+
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+            <comments>A business-friendly OSS license</comments>
+        </license>
+    </licenses>
+
     
     <properties>
         <version.java>1.8</version.java>
