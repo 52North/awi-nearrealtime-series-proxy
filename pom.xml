@@ -221,6 +221,7 @@
                         </systemProperty>
                     </systemProperties>
                     <webApp>
+                        <allowDuplicateFragmentNames>true</allowDuplicateFragmentNames>
                         <contextPath>/</contextPath>
                     </webApp>
                 </configuration>
