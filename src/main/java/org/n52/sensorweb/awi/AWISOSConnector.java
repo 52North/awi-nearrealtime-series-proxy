@@ -14,7 +14,6 @@ import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.n52.janmayen.function.Functions;
 import org.n52.proxy.config.DataSourceConfiguration;
 import org.n52.proxy.connector.AbstractSosConnector;
 import org.n52.proxy.connector.ConnectorRequestFailedException;
@@ -36,11 +35,16 @@ import org.n52.series.db.dao.JTSGeometryConverter;
 import org.n52.shetland.ogc.filter.TemporalFilter;
 import org.n52.shetland.ogc.gml.CodeType;
 import org.n52.shetland.ogc.gml.time.TimePeriod;
+import org.n52.shetland.ogc.om.AbstractObservationValue;
+import org.n52.shetland.ogc.om.MultiObservationValues;
 import org.n52.shetland.ogc.om.ObservationStream;
 import org.n52.shetland.ogc.om.ObservationValue;
 import org.n52.shetland.ogc.om.OmObservation;
 import org.n52.shetland.ogc.om.SingleObservationValue;
+import org.n52.shetland.ogc.om.StreamingValue;
 import org.n52.shetland.ogc.om.features.samplingFeatures.SamplingFeature;
+import org.n52.shetland.ogc.om.values.MultiValue;
+import org.n52.shetland.ogc.om.values.Value;
 import org.n52.shetland.ogc.ows.service.GetCapabilitiesResponse;
 import org.n52.shetland.ogc.sos.Sos2Constants;
 import org.n52.shetland.ogc.sos.SosCapabilities;
@@ -95,10 +99,7 @@ public class AWISOSConnector extends AbstractSosConnector {
     @Override
     public UnitEntity getUom(DatasetEntity dataset) {
         return getLatest(dataset)
-                .map(OmObservation::getValue)
-                .map(ObservationValue::getValue)
-                .flatMap(Functions.castIfInstanceOf(SingleObservationValue.class))
-                .map(SingleObservationValue<?>::getUnit)
+                .map(this::getUnit)
                 .map(unit -> EntityBuilder.createUnit(unit, unit, (ProxyServiceEntity) dataset.getService()))
                 .orElseGet(() -> EntityBuilder.createUnit("", "", (ProxyServiceEntity) dataset.getService()));
     }
@@ -129,8 +130,7 @@ public class AWISOSConnector extends AbstractSosConnector {
         return getFirstLatest(dataset, getTimeRange(dataset).map(TimePeriod::getEnd));
     }
 
-    private void addObservationOffering(ServiceConstellation service,
-                                        SosObservationOffering observationOffering) {
+    private void addObservationOffering(ServiceConstellation service, SosObservationOffering observationOffering) {
         observationOffering.getProcedures()
                 .forEach(procedureId -> addDatasetToService(procedureId, service, observationOffering));
     }
@@ -323,6 +323,54 @@ public class AWISOSConnector extends AbstractSosConnector {
         } catch (ConnectorRequestFailedException ex) {
             LOG.error(ERROR_MESSAGE_CONNECTOR_REQUEST_FAILED, ex);
         }
+    }
+
+    private String getUnit(OmObservation observation) {
+        return getUnit(observation.getValue());
+    }
+
+    private String getUnit(ObservationValue<?> value) {
+        if (value instanceof AbstractObservationValue) {
+            return getUnit((AbstractObservationValue) value);
+        } else {
+            LOG.warn("Unsupported ObservationValue: {}", value);
+            return null;
+        }
+    }
+
+    private String getUnit(AbstractObservationValue<?> value) {
+        String unit = value.getUnit();
+
+        if (unit != null && !unit.isEmpty()) {
+            return unit;
+        }
+
+        if (value instanceof SingleObservationValue) {
+            return getUnit((SingleObservationValue) value);
+        } else if (value instanceof MultiObservationValues) {
+            return getUnit((MultiObservationValues) value);
+        } else if (value instanceof StreamingValue) {
+            return getUnit((StreamingValue) value);
+        }
+
+        LOG.warn("Unsupported AbstractObservationVaue: {}", value);
+
+        return value.getValue().getUnit();
+    }
+
+    private String getUnit(SingleObservationValue<?> value) {
+        Value<?> singleObservationValueValue = value.getValue();
+        return singleObservationValueValue.getUnit();
+    }
+
+    private String getUnit(MultiObservationValues<?> value) {
+        MultiValue<?> multiObservationValuesValue = value.getValue();
+        return multiObservationValuesValue.getUnit();
+    }
+
+    private String getUnit(StreamingValue<?> value) {
+        Value<ObservationStream> streamingValueValue = value.getValue();
+        return streamingValueValue.getUnit();
     }
 
 }
