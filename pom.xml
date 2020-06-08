@@ -86,7 +86,7 @@
     
     <properties>
         <version.java>1.8</version.java>
-        <version.arctic-sea>5.1.0</version.arctic-sea>
+        <version.arctic-sea>7.5.1</version.arctic-sea>
         <version.slf4j>1.7.25</version.slf4j>
         <version.jodatime>2.10.1</version.jodatime>
         <version.seriesapi>2.0.1-alpha.2</version.seriesapi>
