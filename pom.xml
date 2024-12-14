@@ -90,7 +90,7 @@
         <version.slf4j>1.7.25</version.slf4j>
         <version.jodatime>2.10.1</version.jodatime>
         <version.seriesapi>2.0.1-alpha.2</version.seriesapi>
-        <version.seriesapi.db>2.0.0-alpha.11</version.seriesapi.db>
+        <version.seriesapi.db>3.0.0-alpha.8</version.seriesapi.db>
         <version.seriesproxy>1.0.0-alpha.9</version.seriesproxy>
     </properties>
     
